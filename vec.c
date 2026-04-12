@@ -415,7 +415,7 @@ bool vec_extend( Vec to[ static 1 ], const Vec from[ static 1 ] ) {
     return false;
 }
 
-bool vec_copy( Vec from[ static 1 ], Vec to[ static 1 ] ) {
+bool vec_copy( const Vec from[ static 1 ], Vec to[ static 1 ] ) {
     assert( from->elem_byte_size != 0 );
 
     vec_init( to, from->elem_byte_size );
@@ -539,81 +539,46 @@ bool vec_sort( Vec vec[ static 1 ], CmpFn fn ) {
     }
 }
 
-static inline size_t prv_vec_index( const Vec vec[ static 1 ],
-                                    size_t start,
-                                    const void *elem, void *tmp ) {
+size_t vec_index( const Vec vec[ static 1 ], size_t start,
+                  const void *elem ) {
     assert( elem != nullptr );
-    assert( tmp != nullptr );
-    assert( start < vec->length );
 
-    VecIter it = vec_iter_begin( vec );
+    for ( size_t i = start; i < vec->length; ++i ) {
+        void *ptr;
+        vec_idx_ptr( vec, i, &ptr );
 
-    it.curr_idx = start;
-
-    for ( ; !vec_iter_curr( &it, tmp ); vec_iter_next( &it ) )
-        if ( memcmp( tmp, elem, vec->elem_byte_size ) == 0 )
-            return it.curr_idx;
+        if ( memcmp( ptr, elem, vec->elem_byte_size ) == 0 )
+            return i;
+    }
 
     return vec->length;
 }
 
-bool vec_index( const Vec vec[ static 1 ], size_t start,
-                const void *elem, size_t *result ) {
+size_t vec_count( const Vec vec[ static 1 ], const void *elem ) {
     assert( elem != nullptr );
-    assert( result != nullptr );
-
-    if ( start >= vec->length )
-        return vec->length;
-
-    if ( vec->elem_byte_size <= VEC_ELEM_SWAP_LIMIT ) {
-        // WARNING: VLA
-        unsigned char buffer[ VEC_ELEM_SWAP_LIMIT ];
-        *result = prv_vec_index( vec, start, elem, buffer );
-        return false;
-    }
-
-    void *buffer = malloc( vec->elem_byte_size );
-    if ( !buffer )
-        return true;
-
-    *result = prv_vec_index( vec, start, elem, buffer );
-    free( buffer );
-
-    return false;
-}
-
-static inline size_t prv_vec_count( const Vec vec[ static 1 ],
-                                    const void *elem, void *tmp ) {
-    assert( elem != nullptr );
-    assert( tmp != nullptr );
 
     size_t cnt = 0;
-    VecIter it = vec_iter_begin( vec );
 
-    for ( ; !vec_iter_curr( &it, tmp ); vec_iter_next( &it ) )
-        cnt += memcmp( tmp, elem, it.vec->elem_byte_size ) == 0;
+    for ( size_t i = 0; i < vec->length; ++i ) {
+        void *ptr;
+        vec_idx_ptr( vec, i, &ptr );
+
+        cnt += memcmp( ptr, elem, vec->elem_byte_size ) == 0;
+    }
 
     return cnt;
 }
 
-bool vec_count( const Vec vec[ static 1 ],
-                const void *elem, size_t *result ) {
+bool vec_contains( const Vec vec[ static 1 ], const void *elem ) {
     assert( elem != nullptr );
-    assert( result != nullptr );
 
-    if ( vec->elem_byte_size <= VEC_ELEM_SWAP_LIMIT ) {
-        // WARNING: VLA
-        unsigned char buffer[ VEC_ELEM_SWAP_LIMIT ];
-        *result = prv_vec_count( vec, elem, buffer );
-        return false;
+    for ( size_t i = 0; i < vec->length; ++i ) {
+        void *ptr;
+        vec_idx_ptr( vec, i, &ptr );
+
+        if ( memcmp( ptr, elem, vec->elem_byte_size ) == 0 )
+            return true;
     }
-
-    void *buffer = malloc( vec->elem_byte_size );
-    if ( !buffer )
-        return true;
-
-    *result = prv_vec_count( vec, elem, buffer );
-    free( buffer );
 
     return false;
 }

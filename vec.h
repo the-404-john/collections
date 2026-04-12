@@ -60,14 +60,17 @@ bool vec_try_insert( Vec vec[ static 1 ],
 void vec_remove( Vec vec[ static 1 ], size_t idx, void *result );
 bool vec_try_remove( Vec vec[ static 1 ], size_t idx, void *result );
 
+bool vec_copy( const Vec from[ static 1 ], Vec to[ static 1 ] );
+
 // Algorithms
 bool vec_sort( Vec vec[ static 1 ], CmpFn fn );
 
-bool vec_index( const Vec vec[ static 1 ], size_t start,
-                const void *elem, size_t *result );
+size_t vec_index( const Vec vec[ static 1 ],
+                  size_t start, const void *elem );
 
-bool vec_count( const Vec vec[ static 1 ],
-                const void *elem, size_t *result );
+size_t vec_count( const Vec vec[ static 1 ], const void *elem );
+
+bool vec_contains( const Vec vec[ static 1 ], const void *elem );
 
 // Iterator
 VecIter vec_iter_begin( const Vec vec[ static 1 ] );
