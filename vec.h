@@ -62,8 +62,12 @@ bool vec_try_remove( Vec vec[ static 1 ], size_t idx, void *result );
 
 // Algorithms
 bool vec_sort( Vec vec[ static 1 ], CmpFn fn );
-bool vec_index( Vec vec[ static 1 ], const void *elem, size_t *result );
-bool vec_count( Vec vec[ static 1 ], const void *elem, size_t *result );
+
+bool vec_index( const Vec vec[ static 1 ], size_t start,
+                const void *elem, size_t *result );
+
+bool vec_count( const Vec vec[ static 1 ],
+                const void *elem, size_t *result );
 
 // Iterator
 VecIter vec_iter_begin( const Vec vec[ static 1 ] );
