@@ -31,6 +31,36 @@ static inline void prv_destroy_node( Node *node ) {
     free( node );
 }
 
+static inline Node* prv_list_idx_ptr_from_back( const List list[ static 1 ],
+                                                size_t idx ) {
+    assert( !list->head == !list->tail );
+    assert( idx < list->length );
+
+    Node *curr = list->tail;
+
+    for ( size_t i = list->length - 1; i > idx; --i ) {
+        assert( curr != nullptr );
+        curr = curr->prev;
+    }
+
+    return curr;
+}
+
+static inline Node* prv_list_idx_ptr_from_front( const List list[ static 1 ],
+                                                 size_t idx ) {
+    assert( !list->head == !list->tail );
+    assert( idx < list->length );
+
+    Node *curr = list->head;
+
+    for ( size_t i = 0; i < idx; ++i ) {
+        assert( curr != nullptr );
+        curr = curr->next;
+    }
+
+    return curr;
+}
+
 void list_init( List list[ static 1 ], size_t elem_byte_size ) {
     ( void ) memset( list, 0, sizeof( List ) );
     list->elem_byte_size = elem_byte_size;
@@ -63,6 +93,55 @@ size_t list_length( const List list[ static 1 ] ) {
 
 bool list_is_empty( const List list[ static 1 ] ) {
     return list->length == 0;
+}
+
+void list_idx_ptr( const List list[ static 1 ], size_t idx,
+                   void *result[ static 1 ] ) {
+    assert( !list->head == !list->tail );
+    assert( idx < list->length );
+
+    Node *node;
+
+    if ( idx <= list->length / 2 )
+        node = prv_list_idx_ptr_from_front( list, idx );
+    else
+        node = prv_list_idx_ptr_from_back( list, idx );
+
+    assert( node != nullptr );
+    *result = &node->data;
+}
+
+bool list_at_ptr( const List list[ static 1 ], size_t idx,
+                  void *result[ static 1 ] ) {
+    assert( !list->head == !list->tail );
+
+    if ( idx >= list->length )
+        return false;
+
+    list_idx_ptr( list, idx, result );
+    return true;
+}
+
+void list_idx( const List list[ static 1 ], size_t idx, void *result ) {
+    assert( result != nullptr );
+    assert( !list->head == !list->tail );
+
+    assert( idx < list->length );
+
+    void *data;
+    list_idx_ptr( list, idx, &data );
+    ( void ) memcpy( result, data, list->elem_byte_size );
+}
+
+bool list_at( const List list[ static 1 ], size_t idx, void *result ) {
+    assert( result != nullptr );
+    assert( !list->head == !list->tail );
+
+    if ( idx >= list->length )
+        return false;
+
+    list_idx( list, idx, result );
+    return true;
 }
 
 bool list_push_back( List list[ static 1 ], const void *new_elem ) {
@@ -155,15 +234,78 @@ bool list_pop_front( List list[ static 1 ], void *result ) {
 bool list_insert( List list[ static 1 ],
                   size_t idx, const void *new_elem ) {
     assert( new_elem != nullptr );
+    assert( !list->head == !list->tail );
 
-    // TODO:
+    assert( idx <= list->length );
+
+    if ( idx == 0 )
+        return list_push_front( list, new_elem );
+
+    if ( idx == list->length )
+        return list_push_back( list, new_elem );
+
+    Node *new_node;
+    if ( !prv_create_node( list->elem_byte_size, new_elem, &new_node ) )
+        return false;
+
+    Node *prev;
+    if ( idx <= list->length / 2 )
+        prev = prv_list_idx_ptr_from_front( list, idx - 1 );
+    else
+        prev = prv_list_idx_ptr_from_back( list, idx - 1 );
+
+    assert( prev != nullptr );
+    assert( prev->prev != nullptr );
+    assert( prev->next != nullptr );
+
+    new_node->next = prev->next;
+    new_node->prev = prev;
+
+    prev->next = new_node;
+
+    list->length += 1;
+    return true;
 }
 
-bool list_remove( List list[ static 1 ],
+void list_remove( List list[ static 1 ],
                   size_t idx, void *result ) {
     assert( result != nullptr );
+    assert( !list->head == !list->tail );
 
-    // TODO:
+    assert( idx < list->length );
+
+    if ( idx == 0 ) {
+        list_pop_front( list, result );
+        return;
+    }
+
+    if ( idx + 1 == list->length ) {
+        list_pop_back( list, result );
+        return;
+    }
+
+    Node *prev;
+
+    if ( idx - 1 <= list->length / 2 )
+        prev = prv_list_idx_ptr_from_front( list, idx );
+    else
+        prev = prv_list_idx_ptr_from_back( list, idx );
+
+    assert( prev != nullptr );
+
+    Node *curr = prev->next;
+
+    assert( curr != nullptr );
+    assert( curr->next != nullptr );
+    assert( curr->prev != nullptr );
+
+    curr->next->prev = prev;
+    prev->next = curr->next;
+
+    ( void ) memcpy( result, curr->data, list->elem_byte_size );
+    prv_destroy_node( curr );
+
+    list->length -= 1;
 }
 
 bool list_copy( const List from[ static 1 ], List to[ static 1 ] ) {
@@ -193,17 +335,90 @@ List list_merge( List fst[ static 1 ], List snd[ static 1 ], CmpFn fn ) {
     assert( !snd->head == !snd->tail );
     assert( fst->elem_byte_size == snd->elem_byte_size );
 
-    const size_t elem_size = fst->elem_byte_size;
-
     List new_list;
-    list_init( &new_list, elem_size );
+    list_init( &new_list, fst->elem_byte_size );
 
-    // TODO:
+    Node dummy = {};
+
+    Node *tail = &dummy,
+         *curr_fst = fst->head,
+         *curr_snd = snd->head;
+
+    while ( curr_fst != nullptr && curr_snd != nullptr ) {
+        Node *curr;
+
+        if ( fn( curr_fst, curr_snd ) != Greater ) {
+            curr = curr_fst;
+            curr_fst = curr_fst->next;
+        } else {
+            curr = curr_snd;
+            curr_snd = curr_snd->next;
+        }
+
+        curr->next = nullptr;
+        curr->prev = tail;
+
+        tail->next = curr;
+        tail = curr;
+    }
+
+    if ( curr_fst != nullptr ) {
+        curr_fst->prev = tail;
+
+        tail->next = curr_fst;
+        tail = fst->tail;
+    }
+
+    if ( curr_snd != nullptr ) {
+        curr_snd->prev = tail;
+
+        tail->next = curr_snd;
+        tail = snd->tail;
+    }
+
+    if ( dummy.next != nullptr )
+        dummy.next->prev = nullptr;
+
+    new_list.head = dummy.next;
+    new_list.tail = tail;
+
+    assert( fst->length <= SIZE_MAX - snd->length );
+    new_list.length += fst->length + snd->length;
+
+    fst->head = fst->tail = nullptr;
+    snd->head = snd->tail = nullptr;
+    fst->length = snd->length = 0;
 
     return new_list;
 }
 
-bool list_sort( List list[ static 1 ], CmpFn fn );
+void list_sort( List list[ static 1 ], CmpFn fn ) {
+    if ( list->length <= 1 )
+        return;
+
+    const size_t mid_idx = list->length / 2;
+    Node *mid = prv_list_idx_ptr_from_front( list, mid_idx );
+
+    List left = {
+        .head = list->head,
+        .tail = mid->prev,
+        .length = mid_idx,
+        .elem_byte_size = list->elem_byte_size
+    };
+
+    List right = {
+        .head = mid,
+        .tail = list->tail,
+        .length = list->length - mid_idx,
+        .elem_byte_size = list->elem_byte_size
+    };
+
+
+    list_sort( &left, fn );
+    list_sort( &right, fn );
+
+    *list = list_merge( &left, &right, fn );
+}
 
 size_t list_index( const List list[ static 1 ],
                    size_t start, const void *elem ) {

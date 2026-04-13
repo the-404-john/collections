@@ -30,6 +30,21 @@ void list_swap( List fst[ static 1 ], List snd[ static 1 ] );
 size_t list_length( const List list[ static 1 ] );
 bool list_is_empty( const List list[ static 1 ] );
 
+void list_idx_ptr( const List list[ static 1 ], size_t idx,
+                   void *result[ static 1 ] );
+
+bool list_at_ptr( const List list[ static 1 ], size_t idx,
+                  void *result[ static 1 ] );
+
+void list_idx( const List list[ static 1 ], size_t idx, void *result );
+bool list_at( const List list[ static 1 ], size_t idx, void *result );
+
+bool list_swap_elem_idx( List list[ static 1 ],
+                         size_t idx_1, size_t idx_2 );
+
+bool list_swap_elem_at( List list[ static 1 ],
+                        size_t idx_1, size_t idx_2 );
+
 bool list_push_back( List list[ static 1 ], const void *new_elem );
 bool list_push_front( List list[ static 1 ], const void *new_elem );
 
@@ -39,14 +54,14 @@ bool list_pop_front( List list[ static 1 ], void *result );
 bool list_insert( List list[ static 1 ],
                   size_t idx, const void *new_elem );
 
-bool list_remove( List list[ static 1 ],
+void list_remove( List list[ static 1 ],
                   size_t idx, void *result );
 
 bool list_copy( const List from[ static 1 ], List to[ static 1 ] );
 
 // Algorithms
 List list_merge( List fst[ static 1 ], List snd[ static 1 ], CmpFn fn );
-bool list_sort( List list[ static 1 ], CmpFn fn );
+void list_sort( List list[ static 1 ], CmpFn fn );
 
 size_t list_index( const List list[ static 1 ],
                    size_t start, const void *elem );
