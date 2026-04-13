@@ -413,6 +413,11 @@ void list_sort( List list[ static 1 ], CmpFn fn ) {
         .elem_byte_size = list->elem_byte_size
     };
 
+    left.tail->next = nullptr;
+    right.head->prev = nullptr;
+
+    list->head = list->tail = nullptr;
+    list->length = 0;
 
     list_sort( &left, fn );
     list_sort( &right, fn );
