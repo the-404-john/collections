@@ -41,7 +41,7 @@ size_t vec_capacity( const Vec vec[ static 1 ] ) {
 }
 
 size_t vec_is_empty( const Vec vec[ static 1 ] ) {
-    return vec_length( vec ) == 0;
+    return vec->length == 0;
 }
 
 static inline void prv_swap_mem( size_t size,
@@ -80,19 +80,18 @@ static inline bool prv_vec_change_capacity( Vec vec[ static 1 ],
     );
 
     if ( new_data == nullptr )
-        return true;
+        return false;
 
     vec->data = new_data;
     vec->capacity = new_capacity;
-    return false;
+    return true;
 }
 
 static inline bool prv_vec_grow( Vec vec[ static 1 ] ) {
-    enum : size_t { GROW = 2 };
-
     size_t new_capacity = vec->capacity + ( vec->capacity == 0 );
-    if ( ckd_mul( &new_capacity, new_capacity, GROW ) )
-        return true;
+
+    if ( ckd_mul( &new_capacity, new_capacity, 2 ) )
+        return false;
 
     return prv_vec_change_capacity( vec, new_capacity );
 }
@@ -144,10 +143,10 @@ bool vec_at_ptr( const Vec vec[ static 1 ], size_t idx,
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( idx >= vec->length )
-        return true;
+        return false;
 
     vec_idx_ptr( vec, idx, result );
-    return false;
+    return true;
 }
 
 void vec_idx( const Vec vec[ static 1 ], size_t idx, void *result ) {
@@ -170,10 +169,10 @@ bool vec_at( const Vec vec[ static 1 ], size_t idx, void *result ) {
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( idx >= vec->length )
-        return true;
+        return false;
 
     vec_idx( vec, idx, result );
-    return false;
+    return true;
 }
 
 bool vec_swap_elem_idx( Vec vec[ static 1 ],
@@ -184,7 +183,7 @@ bool vec_swap_elem_idx( Vec vec[ static 1 ],
     assert( idx_1 >= vec->length || idx_2 >= vec->length );
 
     if ( idx_1 == idx_2 )
-        return false;
+        return true;
 
     void *ptr_idx_1, *ptr_idx_2;
     prv_vec_idx_ptr( vec, idx_1, &ptr_idx_1 );
@@ -200,13 +199,13 @@ bool vec_swap_elem_idx( Vec vec[ static 1 ],
     } else {
         void *buffer = malloc( elem_size );
         if ( buffer == nullptr )
-            return true;
+            return false;
 
         prv_swap_mem( elem_size, buffer, ptr_idx_1, ptr_idx_2 );
         free( buffer );
     }
 
-    return false;
+    return true;
 }
 
 bool vec_swap_elem_at( Vec vec[ static 1 ],
@@ -215,7 +214,7 @@ bool vec_swap_elem_at( Vec vec[ static 1 ],
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( idx_1 >= vec->length || idx_2 >= vec->length )
-        return true;
+        return false;
 
     return vec_swap_elem_idx( vec, idx_1, idx_2 );
 }
@@ -225,7 +224,7 @@ bool vec_reserve( Vec vec[ static 1 ], size_t new_capacity ) {
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( new_capacity <= vec->capacity )
-        return false;
+        return true;
 
     return prv_vec_change_capacity( vec, new_capacity );
 }
@@ -234,8 +233,8 @@ bool vec_resize( Vec vec[ static 1 ], size_t new_length ) {
     assert( vec->elem_byte_size != 0 );
     assert( vec->capacity == 0 || vec->data != nullptr );
 
-    if ( vec_reserve( vec, new_length ) )
-        return true;
+    if ( !vec_reserve( vec, new_length ) )
+        return false;
 
     if ( new_length > vec->length ) {
         const size_t elem_size = vec->elem_byte_size;
@@ -260,11 +259,11 @@ bool vec_push( Vec vec[ static 1 ], const void *new_elem ) {
     assert( vec->length <= vec->capacity );
     assert( vec->capacity == 0 || vec->data != nullptr );
 
-    if ( vec->length == vec->capacity && prv_vec_grow( vec ) )
-        return true;
+    if ( vec->length == vec->capacity && !prv_vec_grow( vec ) )
+        return false;
 
     prv_vec_push( vec, new_elem );
-    return false;
+    return true;
 }
 
 bool vec_try_push( Vec vec[ static 1 ], const void *new_elem ) {
@@ -273,10 +272,10 @@ bool vec_try_push( Vec vec[ static 1 ], const void *new_elem ) {
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( vec->length == vec->capacity )
-        return true;
+        return false;
 
     prv_vec_push( vec, new_elem );
-    return false;
+    return true;
 }
 
 void vec_pop( Vec vec[ static 1 ], void *result ) {
@@ -294,10 +293,10 @@ bool vec_try_pop( Vec vec[ static 1 ], void *result ) {
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( vec->length == 0 )
-        return true;
+        return false;
 
     prv_vec_pop( vec, result );
-    return false;
+    return true;
 }
 
 bool vec_insert( Vec vec[ static 1 ],
@@ -311,8 +310,8 @@ bool vec_insert( Vec vec[ static 1 ],
     if ( idx == vec->length )
         return vec_push( vec, new_elem );
 
-    if ( vec->length == vec->capacity && prv_vec_grow( vec ) )
-        return true;
+    if ( vec->length == vec->capacity && !prv_vec_grow( vec ) )
+        return false;
 
     const size_t elem_size = vec->elem_byte_size;
 
@@ -328,7 +327,7 @@ bool vec_insert( Vec vec[ static 1 ],
     ( void ) memcpy( ptr, new_elem, elem_size );
 
     vec->length += 1;
-    return false;
+    return true;
 }
 
 bool vec_try_insert( Vec vec[ static 1 ],
@@ -338,10 +337,10 @@ bool vec_try_insert( Vec vec[ static 1 ],
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( vec->length == vec->capacity )
-        return true;
+        return false;
 
     vec_insert( vec, idx, new_elem );
-    return false;
+    return true;
 }
 
 void vec_remove( Vec vec[ static 1 ], size_t idx, void *result ) {
@@ -376,7 +375,7 @@ bool vec_try_remove( Vec vec[ static 1 ], size_t idx, void *result ) {
     assert( vec->capacity == 0 || vec->data != nullptr );
 
     if ( idx >= vec->length )
-        return true;
+        return false;
 
     vec_remove( vec, idx, result );
     return true;
@@ -389,10 +388,10 @@ bool vec_reverse( Vec vec[ static 1 ] ) {
     // NOTE: Should optimize and avoid repeated allocations
     //       — use a only one single temporary buffer for swaps.
     for ( size_t i = 0; i < half; ++i )
-        if ( vec_swap_elem_idx( vec, i, length - i - 1 ) )
-            return true;
+        if ( !vec_swap_elem_idx( vec, i, length - i - 1 ) )
+            return false;
 
-    return false;
+    return true;
 }
 
 bool vec_extend( Vec to[ static 1 ], const Vec from[ static 1 ] ) {
@@ -400,10 +399,10 @@ bool vec_extend( Vec to[ static 1 ], const Vec from[ static 1 ] ) {
 
     size_t new_capacity;
     if ( ckd_add( &new_capacity, to->length, from->length ) )
-        return true;
+        return false;
 
-    if ( vec_reserve( to, new_capacity ) )
-        return true;
+    if ( !vec_reserve( to, new_capacity ) )
+        return false;
 
     for ( size_t i = 0; i < from->length; ++i ) {
         void *ptr;
@@ -412,7 +411,7 @@ bool vec_extend( Vec to[ static 1 ], const Vec from[ static 1 ] ) {
         ( void ) vec_try_push( to, ptr );
     }
 
-    return false;
+    return true;
 }
 
 bool vec_copy( const Vec from[ static 1 ], Vec to[ static 1 ] ) {
@@ -420,8 +419,8 @@ bool vec_copy( const Vec from[ static 1 ], Vec to[ static 1 ] ) {
 
     vec_init( to, from->elem_byte_size );
 
-    if ( vec_reserve( to, from->length ) )
-        return true;
+    if ( !vec_reserve( to, from->length ) )
+        return false;
 
     for ( size_t i = 0; i < from->length; ++i ) {
         void *ptr;
@@ -430,7 +429,7 @@ bool vec_copy( const Vec from[ static 1 ], Vec to[ static 1 ] ) {
         ( void ) vec_try_push( to, ptr );
     }
 
-    return false;
+    return true;
 }
 
 VecIter vec_iter_begin( const Vec vec[ static 1 ] ) {
@@ -449,13 +448,13 @@ bool vec_iter_curr( VecIter it[ static 1 ], void *result ) {
     assert( it->curr_idx <= it->vec->length );
 
     if ( it->curr_idx == it->vec->length )
-        return true;
+        return false;
 
     void *ptr;
     vec_idx_ptr( it->vec, it->curr_idx, &ptr );
     ( void ) memcpy( result, ptr, it->vec->elem_byte_size );
 
-    return false;
+    return true;
 }
 
 void vec_iter_next( VecIter it[ static 1 ] ) {
@@ -519,7 +518,7 @@ static inline void quick_sort( Vec vec[ static 1],
 
 bool vec_sort( Vec vec[ static 1 ], CmpFn fn ) {
     if ( vec->length <= 1 )
-        return false;
+        return true;
 
     const size_t elem_size = vec->elem_byte_size;
 
@@ -531,12 +530,14 @@ bool vec_sort( Vec vec[ static 1 ], CmpFn fn ) {
     } else {
         void *buffer = malloc( elem_size );
         if ( buffer == nullptr )
-            return true;
+            return false;
 
         quick_sort( vec, 0, vec->length - 1, fn, buffer );
 
         free( buffer );
     }
+
+    return true;
 }
 
 size_t vec_index( const Vec vec[ static 1 ], size_t start,
