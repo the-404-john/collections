@@ -37,6 +37,9 @@ bool vec_at_ptr( const Vec vec[ static 1 ], size_t idx,
 void vec_idx( const Vec vec[ static 1 ], size_t idx, void *result );
 bool vec_at( const Vec vec[ static 1 ], size_t idx, void *result );
 
+void vec_buf_swap_elem_idx( Vec vec[ static 1 ], void *buffer,
+                            size_t idx_1, size_t idx_2 );
+
 bool vec_swap_elem_idx( Vec vec[ static 1 ],
                         size_t idx_1, size_t idx_2 );
 
@@ -59,6 +62,9 @@ bool vec_try_insert( Vec vec[ static 1 ],
 
 void vec_remove( Vec vec[ static 1 ], size_t idx, void *result );
 bool vec_try_remove( Vec vec[ static 1 ], size_t idx, void *result );
+
+void vec_empty_pop( Vec vec[ static 1 ] );
+void vec_empty_remove( Vec vec[ static 1 ], size_t idx );
 
 bool vec_copy( const Vec from[ static 1 ], Vec to[ static 1 ] );
 

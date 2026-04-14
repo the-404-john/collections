@@ -175,15 +175,17 @@ bool vec_at( const Vec vec[ static 1 ], size_t idx, void *result ) {
     return true;
 }
 
-bool vec_swap_elem_idx( Vec vec[ static 1 ],
-                        size_t idx_1, size_t idx_2 ) {
+void vec_buf_swap_elem_idx( Vec vec[ static 1 ], void *buffer,
+                            size_t idx_1, size_t idx_2 ) {
+    assert( buffer != nullptr );
     assert( vec->length <= vec->capacity );
     assert( vec->capacity == 0 || vec->data != nullptr );
 
-    assert( idx_1 >= vec->length || idx_2 >= vec->length );
+    assert( idx_1 < vec->length );
+    assert( idx_2 < vec->length );
 
     if ( idx_1 == idx_2 )
-        return true;
+        return;
 
     void *ptr_idx_1, *ptr_idx_2;
     prv_vec_idx_ptr( vec, idx_1, &ptr_idx_1 );
@@ -192,16 +194,34 @@ bool vec_swap_elem_idx( Vec vec[ static 1 ],
     const size_t elem_size = vec->elem_byte_size;
     assert( elem_size != 0 );
 
+    prv_swap_mem( elem_size, buffer, ptr_idx_1, ptr_idx_2 );
+}
+
+
+bool vec_swap_elem_idx( Vec vec[ static 1 ],
+                        size_t idx_1, size_t idx_2 ) {
+    assert( vec->length <= vec->capacity );
+    assert( vec->capacity == 0 || vec->data != nullptr );
+
+    assert( idx_1 < vec->length );
+    assert( idx_2 < vec->length );
+
+    if ( idx_1 == idx_2 )
+        return true;
+
+    const size_t elem_size = vec->elem_byte_size;
+    assert( elem_size != 0 );
+
     if ( elem_size <= VEC_ELEM_SWAP_LIMIT ) {
         // WARNING: VLA
         unsigned char buffer[ elem_size ];
-        prv_swap_mem( elem_size, buffer, ptr_idx_1, ptr_idx_2 );
+        vec_buf_swap_elem_idx( vec, buffer, idx_1, idx_2 );
     } else {
         void *buffer = malloc( elem_size );
         if ( buffer == nullptr )
             return false;
 
-        prv_swap_mem( elem_size, buffer, ptr_idx_1, ptr_idx_2 );
+        vec_buf_swap_elem_idx( vec, buffer, idx_1, idx_2 );
         free( buffer );
     }
 
@@ -354,8 +374,8 @@ void vec_remove( Vec vec[ static 1 ], size_t idx, void *result ) {
         return vec_pop( vec, result );
 
     const size_t elem_size = vec->elem_byte_size;
-
     assert( elem_size != 0 );
+
     assert( vec->length - idx <= SIZE_MAX / elem_size );
     const size_t byte_size = ( vec->length - idx - 1 ) * elem_size;
 
@@ -379,6 +399,38 @@ bool vec_try_remove( Vec vec[ static 1 ], size_t idx, void *result ) {
 
     vec_remove( vec, idx, result );
     return true;
+}
+
+void vec_empty_pop( Vec vec[ static 1 ] ) {
+    assert( vec->length <= vec->capacity );
+    assert( vec->capacity == 0 || vec->data != nullptr );
+
+    assert( vec->length != 0 );
+    vec->length -= 1;
+}
+
+void vec_empty_remove( Vec vec[ static 1 ], size_t idx ) {
+    assert( vec->length <= vec->capacity );
+    assert( vec->capacity == 0 || vec->data != nullptr );
+
+    assert( idx < vec->length );
+
+    if ( idx + 1 == vec->length )
+        return vec_empty_pop( vec );
+
+    const size_t elem_size = vec->elem_byte_size;
+    assert( elem_size != 0 );
+
+    assert( vec->length - idx <= SIZE_MAX / elem_size );
+    const size_t byte_size = ( vec->length - idx - 1 ) * elem_size;
+
+    void *ptr, *ptr_next;
+    vec_idx_ptr( vec, idx, &ptr );
+    vec_idx_ptr( vec, idx + 1, &ptr_next );
+
+    ( void ) memmove( ptr, ptr_next, byte_size );
+
+    vec->length -= 1;
 }
 
 bool vec_reverse( Vec vec[ static 1 ] ) {
