@@ -31,7 +31,6 @@ void vec_swap( Vec fst[ static 1 ], Vec snd[ static 1 ] ) {
     *snd = tmp;
 }
 
-
 size_t vec_length( const Vec vec[ static 1 ] ) {
     return vec->length;
 }
@@ -245,6 +244,13 @@ bool vec_reserve( Vec vec[ static 1 ], size_t new_capacity ) {
 
     if ( new_capacity <= vec->capacity )
         return true;
+
+    return prv_vec_change_capacity( vec, new_capacity );
+}
+
+bool vec_shrink( Vec vec[ static 1 ], size_t new_capacity ) {
+    assert( vec->elem_byte_size != 0 );
+    assert( vec->capacity == 0 || vec->data != nullptr );
 
     return prv_vec_change_capacity( vec, new_capacity );
 }

@@ -47,6 +47,7 @@ bool vec_swap_elem_at( Vec vec[ static 1 ],
                        size_t idx_1, size_t idx_2 );
 
 bool vec_reserve( Vec vec[ static 1 ], size_t new_capacity );
+bool vec_shrink( Vec vec[ static 1 ], size_t new_capacity );
 bool vec_resize( Vec vec[ static 1 ], size_t new_length );
 
 bool vec_push( Vec vec[ static 1 ], const void *new_elem );
