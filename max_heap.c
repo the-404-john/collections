@@ -134,6 +134,27 @@ void max_heap_init( MaxHeap heap[ static 1 ],
     heap->fn = fn;
 }
 
+bool max_heap_build( MaxHeap heap[ static 1 ],
+                     const Vec vec[ static 1 ], CmpFn fn ) {
+    assert( vec->elem_byte_size != 0 );
+
+    MaxHeap tmp;
+    max_heap_init( &tmp, vec->elem_byte_size, fn );
+
+    if ( !vec_reserve( &tmp.vec, vec->length ) )
+        return false;
+
+    for ( size_t i = 0; i < vec->length; ++i ) {
+        void *ptr;
+        vec_idx_ptr( vec, i, &ptr );
+
+        ( void ) vec_try_push( &tmp.vec, ptr );
+    }
+
+    *heap = tmp;
+    return true;
+}
+
 void max_heap_clear( MaxHeap heap[ static 1 ] ) {
     vec_clear( &heap->vec );
     ( void ) memset( heap, 0, sizeof( MaxHeap ) );
@@ -158,10 +179,38 @@ size_t max_heap_is_empty( const MaxHeap heap[ static 1 ] ) {
 }
 
 bool max_heap_peek( const MaxHeap heap[ static 1 ], void *result ) {
+    assert( result != nullptr );
+
+    if ( max_heap_length( heap ) == 0 )
+        return false;
+
+    void *ptr;
+    vec_idx_ptr( &heap->vec, 0, &ptr );
+
+    assert( heap->vec.elem_byte_size != 0 );
+    ( void ) memcpy( result, ptr, heap->vec.elem_byte_size );
+
+    return true;
 }
 
 bool max_heap_copy_peek( const MaxHeap heap[ static 1 ],
                          void *result[ static 1 ] ) {
+    if ( max_heap_length( heap ) == 0 )
+        return false;
+
+    assert( heap->vec.elem_byte_size != 0 );
+
+    void *new_data = malloc( heap->vec.elem_byte_size );
+    if ( new_data == nullptr )
+        return false;
+
+    void *ptr;
+    vec_idx_ptr( &heap->vec, 0, &ptr );
+
+    ( void ) memcpy( new_data, ptr, heap->vec.elem_byte_size );
+
+    *result = new_data;
+    return true;
 }
 
 bool max_heap_reserve( MaxHeap heap[ static 1 ], size_t new_capacity ) {
@@ -188,7 +237,6 @@ bool max_heap_try_push( MaxHeap heap[ static 1 ], const void *new_elem ) {
     return prv_heapify_push( heap );
 }
 
-
 void max_heap_pop( MaxHeap heap[ static 1 ], void *result ) {
     assert( result != nullptr );
 
@@ -198,40 +246,35 @@ void max_heap_pop( MaxHeap heap[ static 1 ], void *result ) {
     const size_t elem_size = heap->vec.elem_byte_size;
     assert( elem_size != 0 );
 
-    // TODO: Technically, we should be able to reuse the memory block of
-    //       poped element, thus no additional allocation is needed,
-    //       but it is not nice, but it is optimal...
-    //
-    if ( elem_size <= VEC_ELEM_SWAP_LIMIT ) {
-        // WARNING: VLA
-        unsigned char buffer[ elem_size ];
-
-        vec_buf_swap_elem_idx( &heap->vec, buffer, 0, length - 1 );
+    if ( length == 1 ) {
         vec_pop( &heap->vec, result );
-
-        prv_heapify_down( heap, buffer, 0 );
-
-    } else {
-        void *buffer = malloc( elem_size );
-        if ( !buffer )
-            return false;
-
-        vec_buf_swap_elem_idx( &heap->vec, buffer, 0, length - 1 );
-        vec_pop( &heap->vec, result );
-
-        prv_heapify_down( heap, buffer, 0 );
-        free( buffer );
+        return;
     }
 
-    return true;
+    void *fst, *lst;
+    vec_idx_ptr( &heap->vec, 0, &fst );
+    vec_idx_ptr( &heap->vec, length - 1, &lst );
+
+    ( void ) memcpy( result, fst, elem_size );
+    ( void ) memcpy( fst, lst, elem_size );
+
+    vec_empty_pop( &heap->vec );
+    prv_heapify_down( heap, lst, 0 );
 }
 
 bool max_heap_try_pop( MaxHeap heap[ static 1 ], void *result ) {
+    assert( result != nullptr );
+
+    if ( vec_length( &heap->vec ) == 0 )
+        return false;
+
+    max_heap_pop( heap, result );
+    return true;
 }
 
 void max_heap_empty_pop( MaxHeap heap[ static 1 ] ) {
+    vec_empty_pop( &heap->vec );
 }
-
 
 bool max_heap_copy( const MaxHeap from[ static 1 ],
                     MaxHeap to[ static 1 ] ) {
@@ -245,4 +288,3 @@ bool max_heap_copy( const MaxHeap from[ static 1 ],
     to->vec = tmp;
     return true;
 }
-

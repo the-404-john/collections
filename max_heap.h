@@ -14,6 +14,9 @@ typedef struct MaxHeap {
 void max_heap_init( MaxHeap heap[ static 1 ],
                     size_t elem_byte_size, CmpFn fn );
 
+bool max_heap_build( MaxHeap heap[ static 1 ],
+                     const Vec vec[ static 1 ], CmpFn fn );
+
 void max_heap_clear( MaxHeap heap[ static 1 ] );
 void max_heap_swap( MaxHeap fst[ static 1 ], MaxHeap snd[ static 1 ] );
 
